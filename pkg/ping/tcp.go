@@ -35,7 +35,8 @@ type TcpPing struct {
 	Port    uint16
 	Timeout time.Duration
 
-	ip net.IP
+	ip  net.IP
+	src net.IP
 }
 
 func (this *TcpPing) SetHost(host string) {
@@ -45,6 +46,15 @@ func (this *TcpPing) SetHost(host string) {
 
 func (this *TcpPing) Host() string {
 	return this.host
+}
+
+func (this *TcpPing) SetSource(src string) error {
+	ip := net.ParseIP(src)
+	if ip == nil {
+		return fmt.Errorf("invalid source address: %q", src)
+	}
+	this.src = ip
+	return nil
 }
 
 func (this *TcpPing) Ping() IPingResult {
@@ -63,6 +73,9 @@ func (this *TcpPing) PingContext(ctx context.Context) IPingResult {
 	dialer := &net.Dialer{
 		Timeout:   this.Timeout,
 		KeepAlive: -1,
+	}
+	if this.src != nil {
+		dialer.LocalAddr = &net.TCPAddr{IP: cloneIP(this.src)}
 	}
 	t0 := time.Now()
 	conn, err := dialer.DialContext(ctx, "tcp", net.JoinHostPort(ip.String(), strconv.FormatUint(uint64(this.Port), 10)))

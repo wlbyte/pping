@@ -1,6 +1,7 @@
 package pping_test
 
 import (
+	"net"
 	"strings"
 	"testing"
 	"time"
@@ -20,6 +21,33 @@ func TestTls(t *testing.T) {
 
 func TestTcp(t *testing.T) {
 	p := ping.NewTcpPing(HOST, 80, time.Second*3)
+	result := p.Ping()
+	if result.Error() != nil {
+		t.Fatal(result.Error())
+	}
+}
+
+func TestTcpSource(t *testing.T) {
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ln.Close()
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conn.Close()
+		}
+	}()
+
+	addr := ln.Addr().(*net.TCPAddr)
+	p := ping.NewTcpPing("127.0.0.1", uint16(addr.Port), time.Second*3)
+	if err := p.SetSource("127.0.0.1"); err != nil {
+		t.Fatal(err)
+	}
 	result := p.Ping()
 	if result.Error() != nil {
 		t.Fatal(result.Error())
